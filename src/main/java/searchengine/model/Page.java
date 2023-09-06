@@ -1,6 +1,8 @@
 package searchengine.model;
 
 import lombok.*;
+import org.hibernate.annotations.OnDelete;
+import org.hibernate.annotations.OnDeleteAction;
 
 import javax.persistence.*;
 import javax.persistence.Index;
@@ -23,7 +25,7 @@ public class Page {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private int id;
 
-    @Column(name = "path", nullable = false, columnDefinition = "VARCHAR(255)") //изменил TEXT на VARCHAR т.к. с типом TEXT нет возможности установить индекс(из-за неопределенной длинны)
+    @Column(name = "path", nullable = false, columnDefinition = "VARCHAR(500)") //изменил TEXT на VARCHAR т.к. с типом TEXT нет возможности установить индекс(из-за неопределенной длинны)
     private String path;
 
     @Column(name = "code", nullable = false, columnDefinition = "INT")

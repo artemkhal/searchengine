@@ -17,15 +17,22 @@ import java.util.concurrent.RecursiveAction;
 public class SiteParser extends RecursiveAction {
 
 
-    private final String url;
+    private String url;
 
-    private final SiteManager manager;
+    private SiteManager manager;
+
+     private volatile Connection.Response connection;
+
+     private volatile Document document;
 
 
     public SiteParser(String url, SiteManager manager) {
         this.url = url;
         this.manager = manager;
     }
+
+    public SiteParser(){}
+
 
 
     @Override
@@ -34,30 +41,10 @@ public class SiteParser extends RecursiveAction {
         String ATTRIBUTE_KEY = "href";
 
         try {
-            Thread.sleep(200);
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
-        }
+            Page page = buildPage(url);
+            manager.write2db(page);
 
-        try {
-            Connection.Response connection = Jsoup.connect(url)
-                    .userAgent("Mozilla/5.0 (Windows; U; WindowsNT 5.1; en-US; rv1.8.1.6) Gecko/20070725 Firefox/2.0.0.6")
-                    .referrer("http://www.google.com")
-                    .ignoreContentType(true)
-                    .ignoreHttpErrors(true)
-                    .execute();
-
-            Document document = connection.parse();
-            int statusCode = connection.statusCode();
-
-            if (statusCode < 400) {
-                Page page = Page.pageBuilder()
-                        .path(connection.url().getPath())
-                        .content(document.html())
-                        .code(connection.statusCode())
-                        .build();
-
-                manager.write2db(page);
+            if (page.getCode() < 400){
 
                 Elements elements = document.select(CSS_QUERY);
                 List<SiteParser> siteParsers = new ArrayList<>();
@@ -71,17 +58,44 @@ public class SiteParser extends RecursiveAction {
                     }
                 }
                 invokeAll(siteParsers);
-            } else {
-                Page page = Page.pageBuilder()
-                        .path(connection.url().getPath())
-                        .code(connection.statusCode())
-                        .build();
-                manager.write2db(page);
             }
-
         } catch (IOException exception) {
             manager.errorReport(url, exception);
         }
+    }
+
+
+    public synchronized Page buildPage(String url) throws IOException {
+        initConnectionAndDocument(url);
+        int statusCode = connection.statusCode();
+
+        if (statusCode < 400){
+            return Page.pageBuilder()
+                    .path(connection.url().getPath())
+                    .content(document.html())
+                    .code(connection.statusCode())
+                    .build();
+        } else return Page.pageBuilder()
+                .path(connection.url().getPath())
+                .code(connection.statusCode())
+                .build();
+    }
+
+
+    private void initConnectionAndDocument(String url) throws IOException {
+        try {
+            Thread.sleep(200);
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+
+        connection = Jsoup.connect(url)
+                .userAgent("Mozilla/5.0 (Windows; U; WindowsNT 5.1; en-US; rv1.8.1.6) Gecko/20070725 Firefox/2.0.0.6")
+                .referrer("http://www.google.com")
+                .ignoreContentType(true)
+                .ignoreHttpErrors(true)
+                .execute();
+        document = connection.parse();
     }
 
 

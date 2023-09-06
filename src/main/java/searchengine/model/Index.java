@@ -1,8 +1,10 @@
 package searchengine.model;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.NoArgsConstructor;
+import lombok.*;
+import org.hibernate.annotations.Cascade;
+import org.hibernate.annotations.OnDelete;
+import org.hibernate.annotations.OnDeleteAction;
+import org.springframework.boot.test.autoconfigure.data.elasticsearch.DataElasticsearchTest;
 
 import javax.persistence.*;
 
@@ -11,6 +13,9 @@ import javax.persistence.*;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@Getter
+@Setter
+@ToString
 public class Index {
 
     @Id
@@ -19,6 +24,7 @@ public class Index {
 
     @OneToOne
     @JoinColumn(name = "page_id", nullable = false)
+    @OnDelete(action = OnDeleteAction.CASCADE)
     private Page page;
 
     @OneToOne

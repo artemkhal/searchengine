@@ -1,8 +1,8 @@
 package searchengine.model;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.NoArgsConstructor;
+import lombok.*;
+import org.hibernate.annotations.OnDelete;
+import org.hibernate.annotations.OnDeleteAction;
 
 import javax.persistence.*;
 
@@ -11,6 +11,9 @@ import javax.persistence.*;
 @Entity
 @Table(name = "lemma")
 @Builder
+@Getter
+@Setter
+@ToString
 public class Lemma {
 
     @Id

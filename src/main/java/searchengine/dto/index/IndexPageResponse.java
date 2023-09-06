@@ -1,4 +1,4 @@
-package searchengine.response.entity;
+package searchengine.dto.index;
 
 import lombok.Builder;
 import lombok.Getter;
@@ -7,7 +7,7 @@ import lombok.Setter;
 @Getter
 @Setter
 @Builder
-public class StartIndexingResponse {
+public class IndexPageResponse {
 
     private boolean result;
     private String error;

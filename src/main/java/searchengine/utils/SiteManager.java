@@ -1,12 +1,11 @@
 package searchengine.utils;
 
 import lombok.extern.slf4j.Slf4j;
-import searchengine.model.Page;
-import searchengine.model.Site;
+import searchengine.model.*;
 
-import searchengine.model.Status;
 import searchengine.repo.PageRepository;
 import searchengine.repo.SiteRepository;
+
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.*;
@@ -14,7 +13,6 @@ import java.util.concurrent.*;
 
 @Slf4j
 public class SiteManager implements Callable<Boolean> {
-
 
 
     private final PageRepository pageRepository;
@@ -30,11 +28,17 @@ public class SiteManager implements Callable<Boolean> {
 
     private SiteParser parser;
 
+    private final IndexManager indexManager;
 
-    public SiteManager(PageRepository pageRepository, SiteRepository siteRepository, searchengine.config.Site site) {
+
+    public SiteManager(PageRepository pageRepository,
+                       SiteRepository siteRepository,
+                       searchengine.config.Site site,
+                       IndexManager indexManager) {
         this.pageRepository = pageRepository;
         this.siteRepository = siteRepository;
         this.site = siteConfig2Entity(site);
+        this.indexManager = indexManager;
     }
 
     public Site getSite() {
@@ -42,7 +46,12 @@ public class SiteManager implements Callable<Boolean> {
     }
 
     @Override
-    public Boolean call(){
+    public Boolean call() {
+        startIndexing();
+        return true;
+    }
+
+    public void startIndexing() {
         isRun = true;
         deleteRecords();
         siteRepository.save(site);
@@ -58,61 +67,57 @@ public class SiteManager implements Callable<Boolean> {
         }
         site.setStatusTime(LocalDateTime.now());
         siteRepository.save(site);
-//        task.invoke(parser);
 
-        log.info("\n\n\n------------------red line бля ------------------\n\n\n");
-        return true;
+        log.info("\nЗакончена индексация сайта " + getSiteUrl() + "\n");
     }
 
     public synchronized void stopIndexing() {
         isRun = false;
-
-        urlList.clear();
-
-        this.parser.cancel(true);
-
+        parser.cancel(true);
         site.setStatus(Status.FAILED);
         site.setStatusTime(LocalDateTime.now());
         site.setLastErr("Indexing for site " + site.getUrl() + " stopped by the user");
         siteRepository.save(site);
+        urlList.clear();
     }
 
-    public void errorReport(String url, Exception exception) {
+    protected void errorReport(String url, Exception exception) {
         site.setStatusTime(LocalDateTime.now());
         site.setLastErr("ERROR FROM:[" + url + "] : {" + exception.getLocalizedMessage() + "}");
         siteRepository.save(site);
     }
 
-    public void write2db(Page page) {
-       try {
-           site.setStatusTime(LocalDateTime.now());
-           page.setSite(site);
-           pageRepository.save(page);
-           siteRepository.save(site);
-           log.info("site : " + site.getUrl() + " , page: " + page.getPath());
-       }catch (Exception e){
-           log.warn(e.getMessage());
-       }
+    protected void write2db(Page page) {
+        try {
+            site.setStatusTime(LocalDateTime.now());
+            page.setSite(site);
+            page = pageRepository.save(page);
+            siteRepository.save(site);
+            log.info("site : " + site.getUrl() + " , page: " + page.getPath());
+            indexManager.calculate(page);
+        } catch (Exception e) {
+            log.warn(e.getMessage());
+        }
     }
 
-    public String getSiteUrl() {
+    protected String getSiteUrl() {
         return site.getUrl();
     }
 
 
-    public boolean contains(String path) {
+    protected boolean contains(String path) {
         return urlList.contains(path);
     }
 
-    public void add2List(String path) {
+    protected void add2List(String path) {
         urlList.add(path);
     }
 
-    public boolean isRun() {
+    protected boolean isRun() {
         return isRun;
     }
 
-    public synchronized boolean isValid(String url) {
+    protected synchronized boolean isValid(String url) {
         if (url.contains("?")) {
             url = url.substring(url.indexOf("?"));
         }
@@ -128,21 +133,18 @@ public class SiteManager implements Callable<Boolean> {
     }
 
 
-
     private void deleteRecords() {
-        Site site = siteRepository.findByUrl(this.site.getUrl());
-        if (site != null){
+        Optional.ofNullable(siteRepository.findByUrl(getSiteUrl())).ifPresent(site -> {
             List<Page> pages = pageRepository.findBySiteId(site.getId());
-            if (!pages.isEmpty()){
-                pages.forEach(pageRepository::delete);
-            }
+            pages.forEach(indexManager::deleteIndexAndLemma);
+            pageRepository.deleteAll(pages);
             siteRepository.delete(site);
-        }
+        });
     }
 
 
     private Site siteConfig2Entity(searchengine.config.Site site) {
-          return Site.siteBuilder()
+        return Site.siteBuilder()
                 .url(site.getUrl())
                 .name(site.getName())
                 .status(Status.INDEXING)
