@@ -1,0 +1,24 @@
+server:
+  port: <- номер порта
+
+spring:
+  datasource:
+    username: <- имя пользователя бд
+    password: <- пароль бд
+    url: <- путь к базе данных, пример - (jdbc:mysql://localhost:3306/search_engine)
+  jpa:
+    defer-datasource-initialization: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQL55Dialect
+
+    hibernate:
+  sql:
+    init:
+      mode: always
+
+
+indexing-settings:
+  sites:
+    - url: https://et-cetera.ru/mobile/
+      name: et-cetera.ru

@@ -21,15 +21,6 @@ public class IndexManager {
     private final IndexRepository indexRepository;
     private final LemmaRepository lemmaRepository;
 
-//
-//    public void calculate(List<Page> pageList, Site site) throws IOException {
-//
-//        for (Page page : pageList) {
-//            if (page.getCode() >= 400)
-//                continue;
-//            calculate(page, site);
-//        }
-//    }
 
     public void calculate(Page page) throws IOException {
         if (page.getCode() < 400) {

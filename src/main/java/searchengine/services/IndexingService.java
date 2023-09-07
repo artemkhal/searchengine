@@ -13,6 +13,4 @@ public interface IndexingService {
     ResponseEntity<?> stopIndexing();
 
     ResponseEntity<?> indexPage(String url);
-
-    List<DataResponse> search(String query, String site, String offset, String limit) throws IOException;
 }

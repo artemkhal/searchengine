@@ -15,16 +15,4 @@ public class DataResponse {
     private String snippet;
     private float relevance;
 
-
-    @Override
-    public String toString() {
-        return "DataResponse{" +
-                "site='" + site + '\'' +
-                ", siteName='" + siteName + '\'' +
-                ", url='" + url + '\'' +
-                ", title='" + title + '\'' +
-                ", snippet='" + snippet + '\'' +
-                ", relevance=" + relevance +
-                '}';
-    }
 }

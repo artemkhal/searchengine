@@ -14,12 +14,4 @@ public class SuccessSearchResponse {
     private int count;
     private List<DataResponse> data;
 
-    @Override
-    public String toString() {
-        return "SuccessSearchResponse{" +
-                "result=" + result +
-                ", count=" + count +
-                ", dataResponseList=" + data +
-                '}';
-    }
 }

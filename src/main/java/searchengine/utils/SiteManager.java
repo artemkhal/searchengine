@@ -93,7 +93,6 @@ public class SiteManager implements Callable<Boolean> {
             page.setSite(site);
             page = pageRepository.save(page);
             siteRepository.save(site);
-            log.info("site : " + site.getUrl() + " , page: " + page.getPath());
             indexManager.calculate(page);
         } catch (Exception e) {
             log.warn(e.getMessage());

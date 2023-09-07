@@ -93,9 +93,10 @@ public class IndexingServiceImpl implements IndexingService {
         taskList.forEach(ForkJoinPool::shutdownNow);
         siteManagerList.forEach(SiteManager::stopIndexing);
         siteManagerList.forEach(item -> {
-            item.getSite().setStatusTime(LocalDateTime.now());
-            item.getSite().setLastErr("Interrupt");
-            item.getSite().setStatus(Status.FAILED);
+            val site = item.getSite();
+            site.setStatusTime(LocalDateTime.now());
+            site.setLastErr("Interrupt");
+            site.setStatus(Status.FAILED);
             siteRepository.save(item.getSite());
         });
         siteManagerList.forEach(SiteManager::stopIndexing);
@@ -104,6 +105,7 @@ public class IndexingServiceImpl implements IndexingService {
 
     @Override
     public ResponseEntity<?> indexPage(String url) {
+        final int BAD_STATUS_CODE = 400;
         searchengine.model.Site site = findSite(url);
         if (site == null) {
             return ResponseEntity.ok(IndexPageResponse.builder().result(false).error("Данная страница находится" +
@@ -117,7 +119,7 @@ public class IndexingServiceImpl implements IndexingService {
                 deletePage(presentPage);
             }
             pageRepository.save(newPage);
-            if (newPage.getCode() >= 400) {
+            if (newPage.getCode() >= BAD_STATUS_CODE) {
                 return ResponseEntity.ok(IndexPageResponse.builder().result(true).build());
             }
             indexManager.calculate(newPage);
@@ -127,100 +129,9 @@ public class IndexingServiceImpl implements IndexingService {
         return ResponseEntity.ok(IndexPageResponse.builder().result(true).build());
     }
 
-    @Override
-    public List<DataResponse> search(String query, String site, String offset, String limit) throws IOException {
-
-        val analysedQuery = Morphology.analyse(query);
-        val sortedAnalysedQuery = new ArrayList<>(analysedQuery.entrySet()
-                .stream()
-                .sorted(Comparator.comparingInt(Map.Entry::getValue))
-                .toList());
-        if (sortedAnalysedQuery.isEmpty()){
-            return null;
-        }
-        val firstLemma = sortedAnalysedQuery.iterator().next().getKey();
-
-        val pages = findPages(firstLemma, site);
-        for (Map.Entry<String, Integer> entry : sortedAnalysedQuery) {
-            val iterator = pages.iterator();
-            while (iterator.hasNext()) {
-                HashMap<String, Integer> map = Morphology.analyse(iterator.next());
-                if (!map.containsKey(entry.getKey()))
-                    iterator.remove();
-            }
-        }
-        List<Lemma> lemmaList = new ArrayList<>();
-        for (Map.Entry<String, Integer> entry : sortedAnalysedQuery) {
-            lemmaList.addAll(lemmaRepository.findByLemma(entry.getKey()));
-        }
-        Map<Page, Float> map = getAbsRelevanceMap(pages, lemmaList);
-        List<DataResponse> dataResponseList = new ArrayList<>();
-        if (!map.isEmpty()) {
-            val maxRAbs = Collections.max(map.values());
-            map.forEach((k, v) -> map.put(k, v / maxRAbs));
-            map.entrySet().stream()
-                    .sorted(Map.Entry.comparingByValue())
-                    .collect(Collectors.toList());
-
-            map.forEach((page, relativeRelevance) -> dataResponseList.add(DataResponse.builder()
-                    .site(page.getSite().getUrl())   //посмотреть - необходимо убрать последний слеш(возможно из за этого не переходит по ссылкам)
-                    .siteName(page.getSite().getName())
-                    .url(page.getPath())
-                    .title(Morphology.getTitle(page))
-                    .snippet(Morphology.getSnippet(sortedAnalysedQuery, page))
-                    .relevance(relativeRelevance)
-                    .build()));
-
-        }
-        return dataResponseList.stream().sorted(Comparator.comparing(DataResponse::getRelevance)).collect(Collectors.toList());
-    }
-
-    private Map<Page, Float> getAbsRelevanceMap(List<Page> pages, List<Lemma> lemmaList) {
-        HashMap<Page, Float> map = new HashMap<>();
-        for (Page page : pages) {
-            for (Lemma lemma : lemmaList) {
-                val index = indexRepository.findAllByLemmaAndPage(lemma.getId(), page.getId());
-                if (index == null){
-                    continue;
-                }
-                if (map.containsKey(page)) {
-                    float rAbs = map.get(page) + index.getRank();
-                    map.put(page, rAbs);
-                } else {
-                    map.put(page, index.getRank());
-                }
-            }
-        }
-        return map;
-    }
-
-    private List<Page> findPages(String word, String site) {
-        searchengine.model.Site repositorySite = null;
-        List<Lemma> lemmaList = new ArrayList<>();
-        if (site != null){
-             repositorySite = siteRepository.findByUrl(site);
-        }
-        if (repositorySite != null){
-            val lemma = lemmaRepository.findByLemmaWereSiteId(word, repositorySite.getId());
-            if (lemma != null){
-                lemmaList.add(lemma);
-            }
-        } else lemmaList.addAll(lemmaRepository.findByLemma(word));
 
 
 
-        if (lemmaList == null) {
-            return new ArrayList<>();
-        }
-        List<Index> indexList = new ArrayList<>();
-
-        for (Lemma lemma1 : lemmaList) {
-          indexList.addAll( indexRepository.findAllByLemma(lemma1.getId()));
-        }
-        return indexList.stream()
-                .map(Index::getPage)
-                .collect(Collectors.toList());
-    }
 
 
     private void deletePage(Page page) {
@@ -245,7 +156,6 @@ public class IndexingServiceImpl implements IndexingService {
                 continue;
             }
             valid += s + "/";
-            log.info(valid);
             site = siteRepository.findByUrl(valid);
             if (!(site == null)) {
                 break;

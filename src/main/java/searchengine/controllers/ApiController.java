@@ -6,13 +6,16 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import searchengine.config.SitesList;
+import searchengine.dto.search.DataResponse;
 import searchengine.dto.search.ErrorSearchResponse;
 import searchengine.dto.search.SuccessSearchResponse;
 import searchengine.dto.statistics.StatisticsResponse;
 import searchengine.services.IndexingService;
+import searchengine.services.SearchService;
 import searchengine.services.StatisticsService;
 
 import java.io.IOException;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api")
@@ -20,11 +23,13 @@ public class ApiController {
 
     private final IndexingService indexingService;
     private final StatisticsService statisticsService;
+    private final SearchService searchService;
 
 
-    public ApiController(StatisticsService statisticsService, IndexingService indexingService) {
+    public ApiController(StatisticsService statisticsService, IndexingService indexingService, SearchService searchService) {
         this.statisticsService = statisticsService;
         this.indexingService = indexingService;
+        this.searchService = searchService;
     }
 
     @GetMapping("/statistics")
@@ -33,43 +38,49 @@ public class ApiController {
     }
 
     @GetMapping("/startIndexing")
-    public ResponseEntity<?> startIndexing(){
+    public ResponseEntity<?> startIndexing() {
         return indexingService.startIndexing();
     }
 
     @GetMapping("/stopIndexing")
-    public ResponseEntity<?> stopIndexing(){
+    public ResponseEntity<?> stopIndexing() {
         return indexingService.stopIndexing();
     }
 
     @PostMapping("/indexPage")
-    public ResponseEntity<?> indexPage(@RequestParam(name = "url") String url){
+    public ResponseEntity<?> indexPage(@RequestParam(name = "url") String url) {
         return indexingService.indexPage(url);
     }
 
     @GetMapping("/search")
     public ResponseEntity<?> search(@RequestParam(name = "query") String query,
                                     @RequestParam(name = "site", required = false) String site,
-                                    @RequestParam(name = "offset", required = false) String offset,
-                                    @RequestParam(name = "limit", required = false) String limit){
+                                    @RequestParam(name = "offset", required = false) int offset,
+                                    @RequestParam(name = "limit", required = false) int limit) {
+
+
         SuccessSearchResponse result = null;
 
         try {
-            val search = indexingService.search(query, site, offset, limit);
-            if (search == null){
+            List<DataResponse> dataResponseList = searchService.searchData(query, site);
+            int size = dataResponseList.size();
+            if (limit < dataResponseList.size()) {
+                size = dataResponseList.size();
+                dataResponseList = dataResponseList.subList(offset, limit + offset);
+            }
+            if (dataResponseList.isEmpty()) {
                 return new ResponseEntity<>(ErrorSearchResponse.builder().result(false).error("Ничего не найдено"), HttpStatus.BAD_REQUEST);
             }
             result = SuccessSearchResponse
                     .builder()
                     .result(true)
-                    .count(search.size())
-                    .data(search)
+                    .count(size)
+                    .data(dataResponseList)
                     .build();
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
         return ResponseEntity.ok(result);
-
 
 
     }
