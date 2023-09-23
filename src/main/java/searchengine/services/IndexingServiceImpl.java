@@ -61,7 +61,6 @@ public class IndexingServiceImpl implements IndexingService {
                     .error("Индексация уже запущена")
                     .build());
         }
-
         ExecutorService service = Executors.newCachedThreadPool();
         for (Site configSite : sites.getSites()) {
             if (!configSite.getUrl().substring((configSite.getUrl().length() - 1)).equals("/")) {
@@ -78,7 +77,6 @@ public class IndexingServiceImpl implements IndexingService {
         }
         taskList.clear();
         siteManagerList.clear();
-
         return ResponseEntity.ok(StartIndexingResponse.builder().result(true).build());
     }
 

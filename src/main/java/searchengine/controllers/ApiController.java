@@ -57,10 +57,7 @@ public class ApiController {
                                     @RequestParam(name = "site", required = false) String site,
                                     @RequestParam(name = "offset", required = false) int offset,
                                     @RequestParam(name = "limit", required = false) int limit) {
-
-
         SuccessSearchResponse result = null;
-
         try {
             List<DataResponse> dataResponseList = searchService.searchData(query, site);
             int size = dataResponseList.size();
@@ -81,7 +78,5 @@ public class ApiController {
             throw new RuntimeException(e);
         }
         return ResponseEntity.ok(result);
-
-
     }
 }

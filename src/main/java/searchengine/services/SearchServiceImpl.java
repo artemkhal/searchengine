@@ -40,7 +40,6 @@ public class SearchServiceImpl implements SearchService{
             return null;
         }
         val firstLemma = sortedAnalysedQuery.iterator().next().getKey();
-
         val pages = findPages(firstLemma, site);
         for (Map.Entry<String, Integer> entry : sortedAnalysedQuery) {
             val iterator = pages.iterator();
@@ -63,23 +62,29 @@ public class SearchServiceImpl implements SearchService{
                     .sorted(Map.Entry.comparingByValue())
                     .collect(Collectors.toList());
 
-            map.forEach((page, relativeRelevance) -> {
-                String snippet = Morphology.getSnippet(sortedAnalysedQuery, page);
-                if (snippet.length() > MAX_SNIPPET_LENGTH)
-                    snippet = snippet.substring(0, MAX_SNIPPET_LENGTH);
-                dataResponseList.add(DataResponse.builder()
-                        .site(page.getSite().getUrl())
-                        .siteName(page.getSite().getName())
-                        .url(page.getPath())
-                        .title(Morphology.getTitle(page))
-                        .snippet(snippet)
-                        .relevance(relativeRelevance)
-                        .build());
-            });
+            dataResponseList.addAll(getDataResponses(map, sortedAnalysedQuery));
         }
         if (!dataResponseList.isEmpty())
             dataResponseList.sort(new DataResponseComparator<>());
         return dataResponseList;
+    }
+
+    private List<DataResponse> getDataResponses(Map<Page, Float> map, ArrayList<Map.Entry<String, Integer>> sortedAnalysedQuery) {
+        List<DataResponse> dataResponses = new ArrayList<>();
+        map.forEach((page, relativeRelevance) -> {
+            String snippet = Morphology.getSnippet(sortedAnalysedQuery, page);
+            if (snippet.length() > MAX_SNIPPET_LENGTH)
+                snippet = snippet.substring(0, MAX_SNIPPET_LENGTH);
+            dataResponses.add(DataResponse.builder()
+                    .site(page.getSite().getUrl())
+                    .siteName(page.getSite().getName())
+                    .url(page.getPath())
+                    .title(Morphology.getTitle(page))
+                    .snippet(snippet)
+                    .relevance(relativeRelevance)
+                    .build());
+        });
+        return dataResponses;
     }
 
 
