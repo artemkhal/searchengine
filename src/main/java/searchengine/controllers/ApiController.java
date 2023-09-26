@@ -1,5 +1,6 @@
 package searchengine.controllers;
 
+import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -15,10 +16,12 @@ import searchengine.services.SearchService;
 import searchengine.services.StatisticsService;
 
 import java.io.IOException;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @RestController
 @RequestMapping("/api")
+@Slf4j
 public class ApiController {
 
     private final IndexingService indexingService;
@@ -75,6 +78,7 @@ public class ApiController {
                     .data(dataResponseList)
                     .build();
         } catch (IOException e) {
+            log.info(LocalDateTime.now() + ": Ошибка при поиске релевантных страниц по запросу \"" + query + "\"");
             throw new RuntimeException(e);
         }
         return ResponseEntity.ok(result);

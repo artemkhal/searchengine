@@ -1,6 +1,7 @@
 package searchengine.services;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -26,6 +27,7 @@ import java.util.Random;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class StatisticsServiceImpl implements StatisticsService {
 
     @Autowired
@@ -80,6 +82,7 @@ public class StatisticsServiceImpl implements StatisticsService {
         if (byUrl != null && byUrl.getStatusTime() != null){
             return convert2Millis(byUrl.getStatusTime());
         }
+        log.info(LocalDateTime.now() + ": Site not found");
         return convert2Millis(LocalDateTime.now());
     }
 

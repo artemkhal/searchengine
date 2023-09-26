@@ -52,6 +52,7 @@ public class SiteManager implements Callable<Boolean> {
     }
 
     public void startIndexing() {
+        log.info(LocalDateTime.now() + ": Начата индексация сайта " + site.getName());
         isRun = true;
         deleteRecords();
         siteRepository.save(site);

@@ -3,6 +3,7 @@ package searchengine.services;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
+import net.bytebuddy.asm.Advice;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -56,6 +57,7 @@ public class IndexingServiceImpl implements IndexingService {
     @Override
     public ResponseEntity<?> startIndexing() {
         if (!siteRepository.findByStatus(Status.INDEXING).isEmpty()) {
+            log.info(LocalDateTime.now() + ": Indexing already exist");
             return ResponseEntity.ok(StartIndexingResponse.builder()
                     .result(false)
                     .error("Индексация уже запущена")
@@ -83,6 +85,7 @@ public class IndexingServiceImpl implements IndexingService {
     @Override
     public ResponseEntity<?> stopIndexing() {
         if (siteRepository.findByStatus(Status.INDEXING).isEmpty()) {
+            log.info(LocalDateTime.now() + ": Indexing is not running");
             return ResponseEntity.ok(StopIndexingResponse.builder()
                     .result(false)
                     .error("Индексация не запущена")
@@ -106,6 +109,7 @@ public class IndexingServiceImpl implements IndexingService {
         final int BAD_STATUS_CODE = 400;
         searchengine.model.Site site = findSite(url);
         if (site == null) {
+            log.info(LocalDateTime.now() + ": The page is outside the sites");
             return ResponseEntity.ok(IndexPageResponse.builder().result(false).error("Данная страница находится" +
                     " за пределами сайтов, указанных в конфигурационном файле").build());
         }
@@ -122,6 +126,7 @@ public class IndexingServiceImpl implements IndexingService {
             }
             indexManager.calculate(newPage);
         } catch (IOException e) {
+            log.info(LocalDateTime.now() + ": Не удалось посчитать количество лемм для страницы " + url);
             throw new RuntimeException(e);
         }
         return ResponseEntity.ok(IndexPageResponse.builder().result(true).build());

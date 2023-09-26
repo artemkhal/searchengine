@@ -1,5 +1,6 @@
 package searchengine.services;
 
+import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -13,10 +14,12 @@ import searchengine.repo.SiteRepository;
 import searchengine.utils.Morphology;
 
 import java.io.IOException;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
+@Slf4j
 public class SearchServiceImpl implements SearchService{
 
     @Autowired
@@ -32,13 +35,15 @@ public class SearchServiceImpl implements SearchService{
     @Override
     public List<DataResponse> searchData(String query, String site) throws IOException {
         val analysedQuery = Morphology.analyse(query);
+        if (analysedQuery.isEmpty()){
+            log.info(LocalDateTime.now() + ": Query is empty");
+            return null;
+        }
         val sortedAnalysedQuery = new ArrayList<>(analysedQuery.entrySet()
                 .stream()
                 .sorted(Comparator.comparingInt(Map.Entry::getValue))
                 .toList());
-        if (sortedAnalysedQuery.isEmpty()){
-            return null;
-        }
+
         val firstLemma = sortedAnalysedQuery.iterator().next().getKey();
         val pages = findPages(firstLemma, site);
         for (Map.Entry<String, Integer> entry : sortedAnalysedQuery) {
@@ -122,6 +127,7 @@ public class SearchServiceImpl implements SearchService{
         } else lemmaList.addAll(lemmaRepository.findByLemma(word));
 
         if (lemmaList.isEmpty()) {
+            log.info(LocalDateTime.now() + ":Lemmas not found");
             return new ArrayList<>();
         }
         List<Index> indexList = new ArrayList<>();
