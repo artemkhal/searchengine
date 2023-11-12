@@ -3,15 +3,15 @@ package searchengine.utils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
+import org.springframework.dao.IncorrectResultSizeDataAccessException;
 import searchengine.model.Index;
 import searchengine.model.Lemma;
 import searchengine.model.Page;
+import searchengine.model.Site;
 import searchengine.repo.IndexRepository;
 import searchengine.repo.LemmaRepository;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 
 
 @Slf4j
@@ -29,8 +29,13 @@ public class IndexManager {
         }
     }
 
-    private void save(String word, int rank, Page page) {
-        val lemma = lemmaRepository.findByLemmaAndSiteId(word, page.getSite().getId());
+    private synchronized void save(String word, int rank, Page page) {
+        Lemma lemma = null;
+        try {
+            lemma = lemmaRepository.findByLemmaAndSiteId(word, page.getSite().getId());
+        } catch (IncorrectResultSizeDataAccessException e) {
+            e.printStackTrace();
+        }
         if (lemma == null) {
             val newLemma = lemmaRepository.save(Lemma.builder()
                     .lemma(word)
@@ -54,17 +59,14 @@ public class IndexManager {
         }
     }
 
-    public void deleteIndexAndLemma(Page page) {
+    public void deleteIndex(Page page) {
         val allByPage = indexRepository.findAllByPage(page.getId());
-        for (Index index : allByPage) {
-            val lemma = index.getLemma();
-            val frequency = lemma.getFrequency();
-            if (frequency > 1){
-                lemma.setFrequency(frequency - 1);
-                lemmaRepository.save(lemma);
-            } else lemmaRepository.delete(lemma);
-        }
+        indexRepository.deleteAll(allByPage);
+    }
 
+    public void deleteLemma(Site site) {
+        val allBySiteId = lemmaRepository.findAllBySiteId(site.getId());
+        lemmaRepository.deleteAll(allBySiteId);
     }
 
 

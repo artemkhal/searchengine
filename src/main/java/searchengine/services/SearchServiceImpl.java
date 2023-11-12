@@ -80,6 +80,7 @@ public class SearchServiceImpl implements SearchService{
             String snippet = Morphology.getSnippet(sortedAnalysedQuery, page);
             if (snippet.length() > MAX_SNIPPET_LENGTH)
                 snippet = snippet.substring(0, MAX_SNIPPET_LENGTH);
+            log.info(page.getPath());
             dataResponses.add(DataResponse.builder()
                     .site(page.getSite().getUrl())
                     .siteName(page.getSite().getName())
@@ -120,7 +121,7 @@ public class SearchServiceImpl implements SearchService{
             repositorySite = siteRepository.findByUrl(site);
         }
         if (repositorySite != null){
-            val lemma = lemmaRepository.findByLemmaWereSiteId(word, repositorySite.getId());
+            val lemma = lemmaRepository.findByLemmaAndSiteId(word, repositorySite.getId());
             if (lemma != null){
                 lemmaList.add(lemma);
             }

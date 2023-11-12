@@ -1,18 +1,20 @@
 package searchengine.utils;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import searchengine.model.*;
 
 import searchengine.repo.PageRepository;
 import searchengine.repo.SiteRepository;
 
+import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.*;
-import java.util.concurrent.*;
+import java.util.logging.SimpleFormatter;
 
 
 @Slf4j
-public class SiteManager implements Callable<Boolean> {
+public class SiteManager implements Runnable {
 
 
     private final PageRepository pageRepository;
@@ -22,11 +24,9 @@ public class SiteManager implements Callable<Boolean> {
 
     private final Site site;
 
-    private volatile boolean isRun;
+    private static volatile boolean isRun;
 
     private final Set<String> urlList = new HashSet<>();
-
-    private SiteParser parser;
 
     private final IndexManager indexManager;
 
@@ -46,35 +46,39 @@ public class SiteManager implements Callable<Boolean> {
     }
 
     @Override
-    public Boolean call() {
+    public void run() {
         startIndexing();
-        return true;
     }
 
     public void startIndexing() {
-        log.info(LocalDateTime.now() + ": Начата индексация сайта " + site.getName());
         isRun = true;
         deleteRecords();
-        siteRepository.save(site);
         log.info("Parsing site: " + site.getUrl());
-        parser = new SiteParser(site.getUrl(), this);
+        saveStatus(Status.INDEXING);
+        SiteParser parser = new SiteParser(site.getUrl(), this);
         parser.invoke();
+        saveStatus(Status.INDEXED);
+        log.info("\nЗакончена индексация сайта " + getSiteUrl() + "\n");
+    }
 
-        if (isRun()) {
-            site.setStatus(Status.INDEXED);
-        } else {
-            site.setStatus(Status.FAILED);
-            site.setLastErr("Interrupt");
+    private void saveStatus(Status status) {
+        switch (status){
+            case INDEXING -> {
+                site.setStatus(Status.INDEXING);
+                break;
+            }
+            case INDEXED -> {
+                site.setStatus(Status.INDEXED);
+                break;
+            }
         }
         site.setStatusTime(LocalDateTime.now());
         siteRepository.save(site);
 
-        log.info("\nЗакончена индексация сайта " + getSiteUrl() + "\n");
     }
 
     public synchronized void stopIndexing() {
         isRun = false;
-        parser.cancel(true);
         site.setStatus(Status.FAILED);
         site.setStatusTime(LocalDateTime.now());
         site.setLastErr("Indexing for site " + site.getUrl() + " stopped by the user");
@@ -84,20 +88,23 @@ public class SiteManager implements Callable<Boolean> {
 
     protected void errorReport(String url, Exception exception) {
         site.setStatusTime(LocalDateTime.now());
-        site.setLastErr("ERROR FROM:[" + url + "] : {" + exception.getLocalizedMessage() + "}");
+        String message = "ERROR FROM:[" + url + "] : {" + exception.getLocalizedMessage() + "}";
+        site.setLastErr(message);
         siteRepository.save(site);
+        log.info(message);
     }
 
     protected void write2db(Page page) {
         try {
             site.setStatusTime(LocalDateTime.now());
             page.setSite(site);
-            page = pageRepository.save(page);
-            siteRepository.save(site);
+            pageRepository.save(page);
+            log.info("Save page for site " + page.getSite().getName());
             indexManager.calculate(page);
-        } catch (Exception e) {
-            log.warn(e.getMessage());
+        } catch (DataIntegrityViolationException | IOException e) {
+            e.getMessage();
         }
+
     }
 
     protected String getSiteUrl() {
@@ -135,8 +142,10 @@ public class SiteManager implements Callable<Boolean> {
 
     private void deleteRecords() {
         Optional.ofNullable(siteRepository.findByUrl(getSiteUrl())).ifPresent(site -> {
+            log.info("Deleting old site data " + site.getUrl());
             List<Page> pages = pageRepository.findBySiteId(site.getId());
-            pages.forEach(indexManager::deleteIndexAndLemma);
+            pages.forEach(indexManager::deleteIndex);
+            indexManager.deleteLemma(site);
             pageRepository.deleteAll(pages);
             siteRepository.delete(site);
         });

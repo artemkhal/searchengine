@@ -1,5 +1,6 @@
 package searchengine.repo;
 
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.CrudRepository;
 import org.springframework.data.repository.query.Param;
@@ -16,8 +17,6 @@ public interface LemmaRepository extends CrudRepository<Lemma, Integer> {
 
     List<Lemma> findByLemma(String lemma);
 
-    @Query(value = "SELECT * FROM `lemma` l WHERE l.lemma = :lemma AND l.site_id = :site_id", nativeQuery = true)
-    Lemma findByLemmaWereSiteId(@Param("lemma") String lemma, @Param("site_id") int siteId);
-
+    List<Lemma> findAllBySiteId(int siteId);
 }
 

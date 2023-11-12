@@ -8,12 +8,7 @@ import javax.persistence.*;
 import javax.persistence.Index;
 
 @Entity
-@Table
-        (name = "`page`"
-                , indexes = @Index(name = "`path_index`",columnList = "path")
-                , uniqueConstraints = { @UniqueConstraint(columnNames = {"path", "site_id"}
-        )}
-        )
+@Table(name = "`page`", indexes = @Index(name = "`path_index`", columnList = "path, site_id"))
 @NoArgsConstructor
 @AllArgsConstructor
 @Getter
@@ -35,7 +30,7 @@ public class Page {
     private String content;
 
     @ManyToOne
-    @JoinColumn(name = "site_id", nullable = false, columnDefinition = "INT" )
+    @JoinColumn(name = "site_id", nullable = false, columnDefinition = "INT")
     private Site site;
 
     @Override

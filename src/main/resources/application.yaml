@@ -1,0 +1,38 @@
+server:
+  port: 8080
+
+spring:
+  datasource:
+    username: root
+    password: 14020465
+    url: jdbc:mysql://${MYSQL_HOST:localhost}:3306/test
+  jpa:
+#    show-sql: true
+    defer-datasource-initialization: true
+    properties:
+      hibernate:
+#        format_sql: true
+        dialect: org.hibernate.dialect.MySQL55Dialect
+    hibernate:
+      ddl-auto: create-drop
+  sql:
+    init:
+      mode: always
+
+
+indexing-settings:
+  sites:
+#    - url: https://skillbox.ru/
+#      name: skillbox.ru
+    - url: https://et-cetera.ru/mobile/
+      name: et-cetera.ru
+#    - url: https://www.lutherancathedral.ru/
+#      name: lutherancathedral.ru
+#    - url: http://www.playback.ru/
+#      name: playback.ru
+#    - url: https://volochek.life/
+#      name: Волочек-лайв
+#    - url: https://www.svetlovka.ru/
+#      name: svetlovka.ru
+
+

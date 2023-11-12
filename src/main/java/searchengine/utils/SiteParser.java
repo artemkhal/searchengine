@@ -66,6 +66,9 @@ public class SiteParser extends RecursiveAction {
 
 
     public synchronized Page buildPage(String url) throws IOException {
+        if (!manager.isRun()){
+            return null;
+        }
         initConnectionAndDocument(url);
         int statusCode = connection.statusCode();
 

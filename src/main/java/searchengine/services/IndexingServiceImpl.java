@@ -49,9 +49,13 @@ public class IndexingServiceImpl implements IndexingService {
     private IndexManager indexManager;
     private final SitesList sites;
 
-    private final List<ForkJoinPool> taskList = new ArrayList<>();
+    private final List<ExecutorService> taskList = new ArrayList<>();
+
+    private final List<ExecutorService> oldTaskList = new ArrayList<>();
 
     private final List<SiteManager> siteManagerList = new ArrayList<>();
+
+    private final List<SiteManager> oldSiteManagerList = new ArrayList<>();
 
 
     @Override
@@ -63,7 +67,9 @@ public class IndexingServiceImpl implements IndexingService {
                     .error("Индексация уже запущена")
                     .build());
         }
+        deleteOldMeta();
         ExecutorService service = Executors.newCachedThreadPool();
+        taskList.add(service);
         for (Site configSite : sites.getSites()) {
             if (!configSite.getUrl().substring((configSite.getUrl().length() - 1)).equals("/")) {
                 configSite.setUrl(configSite.getUrl() + "/");
@@ -71,14 +77,12 @@ public class IndexingServiceImpl implements IndexingService {
             SiteManager manager = new SiteManager(pageRepository, siteRepository, configSite, indexManager);
             siteManagerList.add(manager);
         }
-        try {
-            service.invokeAll(siteManagerList);
-            service.shutdown();
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
+        for (SiteManager siteManager : siteManagerList) {
+            service.submit(siteManager);
         }
-        taskList.clear();
-        siteManagerList.clear();
+        service.shutdown();
+        copyYang2Old();
+        deleteYangMeta();
         return ResponseEntity.ok(StartIndexingResponse.builder().result(true).build());
     }
 
@@ -91,16 +95,11 @@ public class IndexingServiceImpl implements IndexingService {
                     .error("Индексация не запущена")
                     .build());
         }
-        taskList.forEach(ForkJoinPool::shutdownNow);
-        siteManagerList.forEach(SiteManager::stopIndexing);
-        siteManagerList.forEach(item -> {
-            val site = item.getSite();
-            site.setStatusTime(LocalDateTime.now());
-            site.setLastErr("Interrupt");
-            site.setStatus(Status.FAILED);
-            siteRepository.save(item.getSite());
-        });
-        siteManagerList.forEach(SiteManager::stopIndexing);
+        oldTaskList.forEach(ExecutorService::shutdownNow);
+        oldSiteManagerList.forEach(SiteManager::stopIndexing);
+        oldSiteManagerList.forEach(SiteManager::stopIndexing);
+        log.info("Stopping site indexing");
+        deleteOldMeta();
         return ResponseEntity.ok(StopIndexingResponse.builder().result(true).build());
     }
 
@@ -133,10 +132,6 @@ public class IndexingServiceImpl implements IndexingService {
     }
 
 
-
-
-
-
     private void deletePage(Page page) {
         List<Index> indexList = indexRepository.findAllByPage(page.getId());
         List<Lemma> lemmaList = new ArrayList<>();
@@ -165,5 +160,20 @@ public class IndexingServiceImpl implements IndexingService {
             }
         }
         return site;
+    }
+
+    private void copyYang2Old() {
+        oldSiteManagerList.addAll(siteManagerList);
+        oldTaskList.addAll(taskList);
+    }
+
+    private void deleteYangMeta() {
+        taskList.clear();
+        siteManagerList.clear();
+    }
+
+    private void deleteOldMeta() {
+        siteManagerList.clear();
+        taskList.clear();
     }
 }

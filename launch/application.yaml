@@ -1,15 +1,17 @@
 server:
-  port: <- номер порта
+  port: 8080
 
 spring:
   datasource:
-    username: <- имя пользователя бд
-    password: <- пароль бд
-    url: <- путь к базе данных, пример - (jdbc:mysql://localhost:3306/search_engine)
+    username: root
+    password: 14020465
+    url: jdbc:mysql://${MYSQL_HOST:localhost}:3306/search_engine
   jpa:
+    show-sql: true
     defer-datasource-initialization: true
     properties:
       hibernate:
+        format_sql: true
         dialect: org.hibernate.dialect.MySQL55Dialect
 
     hibernate:
@@ -20,5 +22,5 @@ spring:
 
 indexing-settings:
   sites:
-    - url: https://et-cetera.ru/mobile/
-      name: et-cetera.ru
+    - url: https://ipfran.ru/
+      name: ipfran.ru

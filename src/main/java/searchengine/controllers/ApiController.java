@@ -64,9 +64,13 @@ public class ApiController {
         try {
             List<DataResponse> dataResponseList = searchService.searchData(query, site);
             int size = dataResponseList.size();
+            int issuanceCount = limit + offset;
             if (limit < dataResponseList.size()) {
                 size = dataResponseList.size();
-                dataResponseList = dataResponseList.subList(offset, limit + offset);
+                if (issuanceCount > size) {
+                    issuanceCount = size;
+                }
+                dataResponseList = dataResponseList.subList(offset, issuanceCount);
             }
             if (dataResponseList.isEmpty()) {
                 return new ResponseEntity<>(ErrorSearchResponse.builder().result(false).error("Ничего не найдено"), HttpStatus.BAD_REQUEST);
